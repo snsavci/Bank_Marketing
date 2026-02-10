@@ -1,156 +1,132 @@
-# Bank Marketing - Term Deposit Prediction
 
-This project is a machine learning application that predicts bank customers' term deposit subscriptions. It includes a React Native/Expo frontend and a FastAPI backend.
+---
+
+# 🏦 Bank Marketing - Term Deposit Prediction
+
+This project is an end-to-end machine learning application designed to predict the probability of customers subscribing to a term deposit. It features a high-performance API architecture built with FastAPI and a modern, enterprise-grade user interface developed with React Native (Expo).
+
+---
 
 ## 📁 Project Structure
 
 ```
 Bank_Marketing/
-├── backend-api/ # FastAPI backend service
-│ ├── api.py # Main API file
-│ ├── bank_marketing_rf_model.pkl # Trained model
-│ ├── feature_cols.json # Feature columns
-│ ├── optimal_threshold.json # Optimal threshold value
-│ └── requirements.txt # Python dependencies
-├── frontend-app/ # React Native/Expo frontend
-│ ├── App.js # Main application component
-│ ├── src/
-│ │ └── PredictionScreen.js # Prediction screen
-│ └── package.json # Node.js dependencies
-├── data/ # Datasets
-│ ├── train.csv
-│ └── test.csv
-└── notebook/ # Jupyter notebook (EDA and modeling)
-└── eda-and-modelling.ipynb
+├── backend-api/             # FastAPI Backend Service
+│   ├── api.py               # Main API file (CORS & Validation included)
+│   ├── bank_marketing_rf_model.pkl # Trained Random Forest model
+│   ├── feature_cols.json    # List of features expected by the model
+│   └── requirements.txt     # Python dependencies
+├── frontend-app/            # React Native (Expo) Frontend
+│   ├── App.js               # Root component
+│   ├── src/
+│   │   └── PredictionScreen.js # Main Prediction Screen (Premium UI)
+│   └── package.json         # Node.js dependencies
+├── data/                    # Training and Testing datasets
+└── notebook/                # Exploratory Data Analysis (EDA) and Modeling
 ```
 
-## 🚀 Installation and Operation
+---
+
+## 🚀 Installation and Setup
 
 ### Prerequisites
 
-- **Python 3.8+** (and pip)
-- **Node.js 16+** (and npm/yarn)
-- **Expo CLI** (must be installed globally)
+* Python 3.10+
+* Node.js 16+
+* Anaconda (Recommended for virtual environment management)
 
-### 1. Backend API Installation
+---
 
-```bash
-# Navigate to the backend directory
+### 1. Backend API Setup
+
+Open Anaconda Prompt:
+
+```
 cd backend-api
-
-# Create a Python virtual environment (recommended)
-python -m venv venv
-
-# Activate the virtual environment
-# Windows:
-venv\Scripts\activate
-# macOS/Linux:
-source venv/bin/activate
-
-# Install dependencies
+conda create -n bank_api python=3.10
+conda activate bank_api
 pip install -r requirements.txt
+```
 
-# IMPORTANT: If you get a scikit-learn version error:
-# pip uninstall scikit-learn
-# pip install scikit-learn==1.2.2
+Start the API:
 
-# Start the API
-python api.py
-# or
+```
 uvicorn api:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The backend API will run at `http://127.0.0.1:8000`.
+The API will be running at
+[http://localhost:8000](http://localhost:8000)
 
-**API Documentation:**
-- Swagger UI: `http://127.0.0.1:8000/docs`
-- ReDoc: `http://127.0.0.1:8000/redoc`
+---
 
-### 2. Frontend Installation
+### 2. Frontend Setup
 
-```bash
-# Navigate to the frontend directory
+Open a new terminal:
+
+```
 cd frontend-app
-
-# Install dependencies
 npm install
-# or
-yarn install
-
-# Start the application
-npm start
-# or
-yarn start
-# or
-expo start
 ```
 
-After Expo starts:
-- **For Web:** Press `w` or go to `http://localhost:19006` in your browser
-- **For Android:** Press `a` (Android emulator or device required)
-- **For iOS:** Press `i` (macOS and iOS simulator required)
+Launch the Application:
 
-### 3. API Configuring the Connection
-
-The frontend application connects to `http://127.0.0.1:8000/predict` by default.
-
-If the backend is running on a different IP address, update the `API_URL` variable in the `frontend-app/src/PredictionScreen.js` file:
-
-```javascript
-const API_URL = 'http://YOUR_IP_ADDRESS:8000/predict';
+```
+npx expo start
 ```
 
-**Note:** If you are testing from a mobile device, you should use your computer's local IP address instead of `127.0.0.1` (e.g., `http://192.168.1.96:8000`).
+Press **w** to open in your web browser.
 
-## 📱 Usage
+---
 
-1. Launch the Backend API (follow the steps above)
-2. Launch the Frontend Application
-3. Fill out the form:
-- **Age**: Customer age (18-120)
-- **Balance**: Account balance (€)
-- **Job**: Occupation
-- **Housing Loan**: Do you have a housing loan? - **Marital Status**: Marital status
-- **Previous Outcome**: Previous campaign result
-4. Click the **"PREDICT SUBSCRIPTION"** button
-5. View the prediction result
+### 3. API Connection Configuration
 
-## 🔧 Technical Details
+Check the API_URL variable in `frontend-app/src/PredictionScreen.js`:
 
-### Backend (FastAPI)
-- **Model**: Random Forest Classifier
-- **Feature Engineering**: One-Hot Encoding (for categorical variables)
-- **Threshold Value**: 0.6 (loaded from optimal_threshold.json)
-- **CORS**: All origins allowed (for development)
+Web Browser / Emulator:
+[http://127.0.0.1:8000/predict](http://127.0.0.1:8000/predict)
 
-### Frontend (React Native/Expo)
-- **Framework**: Expo ~54.0.25
-- **React**: 19.1.0
-- **React Native**: 0.81.5
-- **Icons**: @expo/vector-icons (FontAwesome5)
+Physical Device Testing: Use your computer's local IP address:
+
+```
+const API_URL = 'http://192.168.x.x:8000/predict'; // Replace x.x with your actual local IP
+```
+
+---
+
+## 🔧 Technical Specifications
+
+* Model: Random Forest Classifier (Scikit-learn)
+* Data Validation: Tiered validation using Pydantic for age (18-95) and balance constraints
+* UI/UX: Corporate Navy & Gold color palette with FontAwesome icon integration
+* Security: Configured CORS (Cross-Origin Resource Sharing) for cross-platform communication
+
+---
 
 ## 🐛 Troubleshooting
 
-### Backend cannot be started
-- Check Python version: `python --version` (must be 3.8+)
-- Make sure all dependencies are installed: `pip list`
-- Make sure the model files (`bank_marketing_rf_model.pkl`, `feature_cols.json`, `optimal_threshold.json`) are in the `backend-api` directory
-- **If you are getting a scikit-learn version error**: Model was trained with version 1.2.2. Install the correct version:
-```bash
-pip uninstall scikit-learn
-pip install scikit-learn==1.2.2
+**NumPy/Sklearn Incompatibility**
+
+If you encounter a `ValueError: numpy.dtype size changed` error, run:
+
+```
+pip install --upgrade numpy scikit-learn
 ```
 
-### Cannot connect to Frontend API
-- Make sure the backend is running: Open `http://127.0.0.1:8000/docs` in your browser
-- Check CORS settings (backend-api/api.py)
-- If testing from a mobile device, use your computer's local IP address instead of `127.0.0.1`
-- Check firewall settings
+**Validation Error (422)**
 
-### Icons not showing
-- Make sure the `@expo/vector-icons` package is installed: `npm list @expo/vector-icons`
-- Restart Expo: `expo start -c` (clearing the cache)
+Ensure the Age input is between 18 and 95. The API enforces these logical boundaries for data integrity.
 
-## 📊 Model Performance
+**Icons Not Rendering**
 
-The model is exceeding a higher threshold due to low precision (35%) It attempts to reduce false positives using (0.6). This threshold value is loaded from the `optimal_threshold.json` file and can be adjusted according to business requirements.
+If icons are missing, refresh the library using:
+
+```
+npx expo install @expo/vector-icons
+```
+
+---
+
+This project was developed to integrate modern software development lifecycles with data science methodologies.
+
+---
+
