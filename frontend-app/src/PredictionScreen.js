@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, ScrollView, Alert, ActivityIndicator, ImageBackground } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import { FontAwesome5 } from '@expo/vector-icons';
 
 // 🚨 API connection URL - Using localhost for web browser testing
 const API_URL = 'http://127.0.0.1:8000/predict';
@@ -17,10 +17,10 @@ const capitalize = (str) => {
 
 // Initial state for all required inputs (matching FastAPI CustomerInput model)
 const initialFormData = {
-    age: '40', job: 'management', marital: 'married', education: 'secondary',
-    default: 'no', balance: '1000', housing: 'yes', loan: 'no',
+    age: '', job: null, marital: null, education: 'secondary',
+    default: 'no', balance: '', housing: null, loan: 'no',
     contact: 'cellular', day: '15', month: 'may', campaign: '2',
-    pdays: '-1', previous: '0', poutcome: 'unknown',
+    pdays: '-1', previous: '0', poutcome: null,
 };
 
 const PredictionScreen = () => {
@@ -35,6 +35,7 @@ const PredictionScreen = () => {
             setFormData({ ...formData, [name]: numericValue });
             return;
         }
+        // Handle null values for pickers (placeholder selection)
         setFormData({ ...formData, [name]: value });
     };
 
@@ -44,20 +45,42 @@ const PredictionScreen = () => {
             Alert.alert("Error", "Please enter valid Age and Balance values.");
             return;
         }
+        // Validate picker fields
+        if (!formData.job || !formData.housing || !formData.marital || !formData.poutcome) {
+            Alert.alert("Error", "Please select all required fields (Job, Housing Loan, Marital Status, Previous Outcome).");
+            return;
+        }
 
         setLoading(true);
         setPredictionResult(null);
 
-        // Prepare data types for API (Convert strings to numbers)
+        // Prepare data types for API (Convert strings to numbers and remove null values)
         const requestData = {
-            ...formData,
             age: parseInt(formData.age),
+            job: formData.job,
+            marital: formData.marital,
+            education: formData.education || 'secondary',
+            default: formData.default || 'no',
             balance: parseFloat(formData.balance),
+            housing: formData.housing,
+            loan: formData.loan || 'no',
+            contact: formData.contact || 'cellular',
             day: parseInt(formData.day),
+            month: formData.month || 'may',
             campaign: parseInt(formData.campaign),
             pdays: parseInt(formData.pdays),
             previous: parseInt(formData.previous),
+            poutcome: formData.poutcome,
         };
+        
+        // Remove any null/undefined values and log for debugging
+        Object.keys(requestData).forEach(key => {
+            if (requestData[key] === null || requestData[key] === undefined) {
+                console.warn(`Warning: ${key} is null/undefined`);
+            }
+        });
+        
+        console.log("Sending request data:", JSON.stringify(requestData, null, 2));
         
         try {
             const response = await fetch(API_URL, {
@@ -68,6 +91,18 @@ const PredictionScreen = () => {
 
             if (!response.ok) {
                 const errorText = await response.text();
+                console.error("API Error Response:", errorText);
+                // Try to parse as JSON for better error message
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    let errorMessage = errorJson.detail || errorText;
+                    if (errorJson.errors && Array.isArray(errorJson.errors)) {
+                        errorMessage = errorJson.message + "\n\n" + errorJson.errors.join("\n");
+                    }
+                    Alert.alert("Validation Error", errorMessage);
+                } catch {
+                    Alert.alert("API Error", `Status: ${response.status}\n${errorText}`);
+                }
                 // Throw error if API responds with non-2xx status (e.g., 400, 500)
                 throw new Error(`API Status: ${response.status}. Details: ${errorText}`);
             }
@@ -100,24 +135,25 @@ const PredictionScreen = () => {
 
                     {/* --- Age and Balance (Inputs) --- */}
                     <Text style={styles.label}>
-                        <Icon name="user-tie" size={16} color={styles.altin.color} style={styles.iconStyle} /> 
+                        <FontAwesome5 name="user-tie" size={16} color={styles.altin.color} style={styles.iconStyle} /> 
                         Age
                     </Text>
-                    <TextInput style={styles.input} keyboardType="numeric" value={formData.age} onChangeText={(text) => handleInputChange('age', text)} />
+                    <TextInput style={styles.input} keyboardType="numeric" placeholder="ex: 40" placeholderTextColor="#9CA3AF" value={formData.age} onChangeText={(text) => handleInputChange('age', text)} />
 
                     <Text style={styles.label}>
-                        <Icon name="coins" size={16} color={styles.altin.color} style={styles.iconStyle} /> 
+                        <FontAwesome5 name="coins" size={16} color={styles.altin.color} style={styles.iconStyle} /> 
                         Balance (€)
                     </Text>
-                    <TextInput style={styles.input} keyboardType="numeric" value={formData.balance} onChangeText={(text) => handleInputChange('balance', text)} />
+                    <TextInput style={styles.input} keyboardType="numeric" placeholder="ex: 1000" placeholderTextColor="#9CA3AF" value={formData.balance} onChangeText={(text) => handleInputChange('balance', text)} />
 
                     {/* --- Job (Picker) --- */}
                     <Text style={styles.label}>
-                        <Icon name="briefcase" size={16} color={styles.altin.color} style={styles.iconStyle} /> 
+                        <FontAwesome5 name="briefcase" size={16} color={styles.altin.color} style={styles.iconStyle} /> 
                         Job
                     </Text>
                     <View style={styles.pickerContainer}>
                         <Picker selectedValue={formData.job} onValueChange={(itemValue) => handleInputChange('job', itemValue)} style={styles.pickerStyle}>
+                            <Picker.Item label="Select Job" value={null} />
                             {/* Remove period from "admin." label */}
                             {['management', 'technician', 'blue-collar', 'admin.', 'services', 'retired', 'self-employed', 'unemployed', 'housemaid', 'student', 'entrepreneur', 'unknown'].map(j => <Picker.Item key={j} label={capitalize(j.replace('.', ''))} value={j} />)}
                         </Picker>
@@ -125,33 +161,36 @@ const PredictionScreen = () => {
 
                     {/* --- Housing Loan (Picker) --- */}
                     <Text style={styles.label}>
-                        <Icon name="home" size={16} color={styles.altin.color} style={styles.iconStyle} /> 
+                        <FontAwesome5 name="home" size={16} color={styles.altin.color} style={styles.iconStyle} /> 
                         Housing Loan
                     </Text>
                     <View style={styles.pickerContainer}>
                         <Picker selectedValue={formData.housing} onValueChange={(itemValue) => handleInputChange('housing', itemValue)} style={styles.pickerStyle}>
+                            <Picker.Item label="Select Housing Loan" value={null} />
                             <Picker.Item label="Yes" value="yes" /><Picker.Item label="No" value="no" />
                         </Picker>
                     </View>
 
                     {/* --- Marital Status (Picker) --- */}
                     <Text style={styles.label}>
-                        <Icon name="heart" size={16} color={styles.altin.color} style={styles.iconStyle} /> 
+                        <FontAwesome5 name="heart" size={16} color={styles.altin.color} style={styles.iconStyle} /> 
                         Marital Status
                     </Text>
                     <View style={styles.pickerContainer}>
                         <Picker selectedValue={formData.marital} onValueChange={(itemValue) => handleInputChange('marital', itemValue)} style={styles.pickerStyle}>
+                            <Picker.Item label="Select Marital Status" value={null} />
                             {['married', 'single', 'divorced'].map(m => <Picker.Item key={m} label={capitalize(m)} value={m} />)}
                         </Picker>
                     </View>
 
                     {/* --- Previous Outcome (Picker) --- */}
                     <Text style={styles.label}>
-                        <Icon name="history" size={16} color={styles.altin.color} style={styles.iconStyle} /> 
+                        <FontAwesome5 name="history" size={16} color={styles.altin.color} style={styles.iconStyle} /> 
                         Previous Outcome
                     </Text>
                     <View style={styles.pickerContainer}>
                         <Picker selectedValue={formData.poutcome} onValueChange={(itemValue) => handleInputChange('poutcome', itemValue)} style={styles.pickerStyle}>
+                            <Picker.Item label="Select Previous Outcome" value={null} />
                             {['unknown', 'failure', 'other', 'success'].map(p => <Picker.Item key={p} label={capitalize(p)} value={p} />)}
                         </Picker>
                     </View>

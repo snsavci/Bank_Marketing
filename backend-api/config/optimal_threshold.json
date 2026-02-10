@@ -1,0 +1,6 @@
+{
+    "optimal_threshold": 0.6,
+    "precision": null,
+    "recall": null,
+    "note": "Default threshold - run threshold optimization cell to get optimal value"
+}
