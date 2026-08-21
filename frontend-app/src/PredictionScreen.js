@@ -3,19 +3,16 @@ import { View, Text, TextInput, Button, StyleSheet, ScrollView, Alert, ActivityI
 import { Picker } from '@react-native-picker/picker';
 import { FontAwesome5 } from '@expo/vector-icons';
 
-// 🚨 API connection URL - Using localhost for web browser testing
+// Local dev API URL (change to machine IP if testing on a real phone)
 const API_URL = 'http://127.0.0.1:8000/predict';
 
-// Background image: Using a placeholder URL for abstract navy texture
-const BACKGROUND_IMAGE_URL = 'https://placehold.co/1920x1080/0A1A33/0A1A33?text=';
-
-// Helper function to capitalize the first letter
+// Helper function to capitalize strings
 const capitalize = (str) => {
     if (!str) return '';
     return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
-// Initial state for all required inputs (matching FastAPI CustomerInput model)
+// Initial form state
 const initialFormData = {
     age: '', job: null, marital: null, education: 'secondary',
     default: 'no', balance: '', housing: null, loan: 'no',
@@ -29,23 +26,26 @@ const PredictionScreen = () => {
     const [loading, setLoading] = useState(false);
 
     const handleInputChange = (name, value) => {
-        // Input validation for numeric fields
         if (name === 'age' || name === 'balance' || name === 'day' || name === 'campaign' || name === 'pdays' || name === 'previous') {
             const numericValue = value.replace(/[^0-9-]/g, '');
             setFormData({ ...formData, [name]: numericValue });
             return;
         }
-        // Handle null values for pickers (placeholder selection)
         setFormData({ ...formData, [name]: value });
     };
 
     const handlePredict = async () => {
-        // Client-side validation
-        if (!formData.age || !formData.balance || isNaN(parseInt(formData.age)) || parseInt(formData.age) <= 0) {
-            Alert.alert("Error", "Please enter valid Age and Balance values.");
+        const ageVal = parseInt(formData.age);
+        const balanceVal = parseFloat(formData.balance);
+
+        if (!formData.age || isNaN(ageVal) || ageVal <= 0) {
+            Alert.alert("Error", "Please enter a valid Age.");
             return;
         }
-        // Validate picker fields
+        if (formData.balance === '' || isNaN(balanceVal)) {
+            Alert.alert("Error", "Please enter a valid Balance.");
+            return;
+        }
         if (!formData.job || !formData.housing || !formData.marital || !formData.poutcome) {
             Alert.alert("Error", "Please select all required fields (Job, Housing Loan, Marital Status, Previous Outcome).");
             return;
@@ -54,14 +54,13 @@ const PredictionScreen = () => {
         setLoading(true);
         setPredictionResult(null);
 
-        // Prepare data types for API (Convert strings to numbers and remove null values)
         const requestData = {
-            age: parseInt(formData.age),
+            age: ageVal,
             job: formData.job,
             marital: formData.marital,
             education: formData.education || 'secondary',
             default: formData.default || 'no',
-            balance: parseFloat(formData.balance),
+            balance: balanceVal,
             housing: formData.housing,
             loan: formData.loan || 'no',
             contact: formData.contact || 'cellular',
@@ -73,15 +72,6 @@ const PredictionScreen = () => {
             poutcome: formData.poutcome,
         };
         
-        // Remove any null/undefined values and log for debugging
-        Object.keys(requestData).forEach(key => {
-            if (requestData[key] === null || requestData[key] === undefined) {
-                console.warn(`Warning: ${key} is null/undefined`);
-            }
-        });
-        
-        console.log("Sending request data:", JSON.stringify(requestData, null, 2));
-        
         try {
             const response = await fetch(API_URL, {
                 method: 'POST',
@@ -91,8 +81,6 @@ const PredictionScreen = () => {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error("API Error Response:", errorText);
-                // Try to parse as JSON for better error message
                 try {
                     const errorJson = JSON.parse(errorText);
                     let errorMessage = errorJson.detail || errorText;
@@ -103,25 +91,21 @@ const PredictionScreen = () => {
                 } catch {
                     Alert.alert("API Error", `Status: ${response.status}\n${errorText}`);
                 }
-                // Throw error if API responds with non-2xx status (e.g., 400, 500)
-                throw new Error(`API Status: ${response.status}. Details: ${errorText}`);
+                return;
             }
 
             const result = await response.json();
             setPredictionResult(result);
 
         } catch (error) {
-            // Error handling for connection issues (connection refused, timeout)
-            Alert.alert("Connection Error", `Could not reach API. Error: ${error.message}. Please ensure the FastAPI server is running in the Anaconda Prompt.`);
-            console.error("API Call Error:", error);
+            Alert.alert("Connection Error", `Could not reach API. Please ensure the FastAPI server is running.\n\nError: ${error.message}`);
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        // ImageBackground component wraps the entire screen
-        <ImageBackground source={{ uri: BACKGROUND_IMAGE_URL }} style={styles.background}>
+        <ImageBackground source={null} style={styles.background}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 
                 {/* Main Content CARD container */}
@@ -135,20 +119,20 @@ const PredictionScreen = () => {
 
                     {/* --- Age and Balance (Inputs) --- */}
                     <Text style={styles.label}>
-                        <FontAwesome5 name="user-tie" size={16} color={styles.altin.color} style={styles.iconStyle} /> 
+                        <FontAwesome5 name="user-tie" size={16} color={styles.gold.color} style={styles.iconStyle} /> 
                         Age
                     </Text>
                     <TextInput style={styles.input} keyboardType="numeric" placeholder="ex: 40" placeholderTextColor="#9CA3AF" value={formData.age} onChangeText={(text) => handleInputChange('age', text)} />
 
                     <Text style={styles.label}>
-                        <FontAwesome5 name="coins" size={16} color={styles.altin.color} style={styles.iconStyle} /> 
+                        <FontAwesome5 name="coins" size={16} color={styles.gold.color} style={styles.iconStyle} /> 
                         Balance (€)
                     </Text>
                     <TextInput style={styles.input} keyboardType="numeric" placeholder="ex: 1000" placeholderTextColor="#9CA3AF" value={formData.balance} onChangeText={(text) => handleInputChange('balance', text)} />
 
                     {/* --- Job (Picker) --- */}
                     <Text style={styles.label}>
-                        <FontAwesome5 name="briefcase" size={16} color={styles.altin.color} style={styles.iconStyle} /> 
+                        <FontAwesome5 name="briefcase" size={16} color={styles.gold.color} style={styles.iconStyle} /> 
                         Job
                     </Text>
                     <View style={styles.pickerContainer}>
@@ -161,7 +145,7 @@ const PredictionScreen = () => {
 
                     {/* --- Housing Loan (Picker) --- */}
                     <Text style={styles.label}>
-                        <FontAwesome5 name="home" size={16} color={styles.altin.color} style={styles.iconStyle} /> 
+                        <FontAwesome5 name="home" size={16} color={styles.gold.color} style={styles.iconStyle} /> 
                         Housing Loan
                     </Text>
                     <View style={styles.pickerContainer}>
@@ -173,7 +157,7 @@ const PredictionScreen = () => {
 
                     {/* --- Marital Status (Picker) --- */}
                     <Text style={styles.label}>
-                        <FontAwesome5 name="heart" size={16} color={styles.altin.color} style={styles.iconStyle} /> 
+                        <FontAwesome5 name="heart" size={16} color={styles.gold.color} style={styles.iconStyle} /> 
                         Marital Status
                     </Text>
                     <View style={styles.pickerContainer}>
@@ -185,7 +169,7 @@ const PredictionScreen = () => {
 
                     {/* --- Previous Outcome (Picker) --- */}
                     <Text style={styles.label}>
-                        <FontAwesome5 name="history" size={16} color={styles.altin.color} style={styles.iconStyle} /> 
+                        <FontAwesome5 name="history" size={16} color={styles.gold.color} style={styles.iconStyle} /> 
                         Previous Outcome
                     </Text>
                     <View style={styles.pickerContainer}>
@@ -206,13 +190,13 @@ const PredictionScreen = () => {
                     {/* --- Predict Button --- */}
                     <View style={styles.buttonContainer}>
                         {loading ? (
-                            <ActivityIndicator size="large" color={styles.altin.color} />
+                            <ActivityIndicator size="large" color={styles.gold.color} />
                         ) : (
                             <Button
                                 title={"PREDICT SUBSCRIPTION"}
                                 onPress={handlePredict}
                                 disabled={loading}
-                                color={styles.altin.color} 
+                                color={styles.gold.color} 
                             />
                         )}
                     </View>
@@ -220,7 +204,7 @@ const PredictionScreen = () => {
                     {/* --- Result Box --- */}
                     {predictionResult && (
                         <View style={[styles.resultBox, {
-                            borderLeftColor: styles.altin.color, // Gold border
+                            borderLeftColor: styles.gold.color, // Gold border
                         }]}>
                             <Text style={styles.resultTitle}>PREDICTION ANALYSIS</Text>
 
@@ -245,7 +229,7 @@ const PredictionScreen = () => {
 const styles = StyleSheet.create({
     // Color Palette Definitions
     mainNavy: { color: '#0A1A33' }, // Main Navy (Trust)
-    altin: { color: '#CFAF70' },     // Gold Accent
+    gold: { color: '#CFAF70' },     // Gold Accent
     success: { color: '#2ECC71' },  // Green Success
     danger: { color: '#E74C3C' },   // Red Danger
     

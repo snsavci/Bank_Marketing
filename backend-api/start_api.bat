@@ -2,6 +2,9 @@
 echo Starting Bank Marketing API Server...
 echo.
 
+REM Always run from backend-api directory
+cd /d "%~dp0"
+
 REM Check if Python is installed
 python --version >nul 2>&1
 if errorlevel 1 (
