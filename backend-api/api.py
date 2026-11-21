@@ -23,11 +23,16 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Enable CORS for local development
+# Origins of the Expo web dev server (npm run web). Native Expo Go builds are
+# not subject to CORS. Add the new origin here if Expo starts on another port.
+ALLOWED_ORIGINS = [
+    "http://localhost:8081",
+    "http://127.0.0.1:8081",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
