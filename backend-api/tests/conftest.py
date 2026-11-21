@@ -1,4 +1,3 @@
-import os
 import sys
 from pathlib import Path
 
@@ -11,7 +10,4 @@ BASE_REQUEST = {
     "pdays": -1, "previous": 0, "poutcome": "unknown",
 }
 
-# api.py opens 'models/' and 'config/' relative to the working directory at
-# import time, so tests must run from backend-api/ and be able to import it.
-os.chdir(BACKEND_DIR)
 sys.path.insert(0, str(BACKEND_DIR))

@@ -1,5 +1,6 @@
 # File: backend-api/api.py
 import logging
+from pathlib import Path
 from typing import Literal
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -31,15 +32,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_THRESHOLD = 0.6
 
 
 def load_artifacts():
     """Load the trained model, the expected feature columns and the decision threshold."""
     try:
-        with open('models/bank_marketing_rf_model.pkl', 'rb') as file:
+        with open(BASE_DIR / 'models' / 'bank_marketing_rf_model.pkl', 'rb') as file:
             model = pickle.load(file)
-        with open('config/feature_cols.json', 'r') as file:
+        with open(BASE_DIR / 'config' / 'feature_cols.json', 'r') as file:
             feature_cols = json.load(file)
     except Exception as e:
         logger.critical(f"Error loading model artifacts: {e}")
@@ -51,7 +53,7 @@ def load_artifacts():
 
     # The threshold file is optional, the other two are required.
     try:
-        with open('config/optimal_threshold.json', 'r') as file:
+        with open(BASE_DIR / 'config' / 'optimal_threshold.json', 'r') as file:
             threshold = json.load(file).get('optimal_threshold', DEFAULT_THRESHOLD)
     except FileNotFoundError:
         threshold = DEFAULT_THRESHOLD
