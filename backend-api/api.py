@@ -214,8 +214,13 @@ async def predict_subscription(data: CustomerInput):
         for col in ['default', 'housing', 'loan']:
             input_df[col] = input_df[col].map(binary_map)
 
-        # One-hot encode categorical features
-        input_df = pd.get_dummies(input_df, columns=CATEGORICAL_COLS, drop_first=True)
+        # One-hot encode categorical features by hand. pd.get_dummies(drop_first=True)
+        # must not be used here: on a single row it drops the only category present,
+        # so every categorical value would be ignored. The baseline category dropped
+        # at training time has no column in FEATURE_COLS, so it stays all-zero below.
+        for col in CATEGORICAL_COLS:
+            input_df[f"{col}_{input_df.at[0, col]}"] = 1
+        input_df = input_df.drop(columns=CATEGORICAL_COLS)
 
         # Fill missing columns so input matches model expected features
         missing_cols = set(FEATURE_COLS) - set(input_df.columns)
