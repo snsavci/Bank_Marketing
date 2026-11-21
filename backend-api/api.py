@@ -45,6 +45,10 @@ def load_artifacts():
         logger.critical(f"Error loading model artifacts: {e}")
         raise RuntimeError(f"Error loading model artifacts: {e}")
 
+    # The forest was pickled with n_jobs=-1. For a single row the thread pool
+    # overhead costs more than the prediction itself.
+    model.n_jobs = 1
+
     # The threshold file is optional, the other two are required.
     try:
         with open('config/optimal_threshold.json', 'r') as file:
@@ -103,8 +107,8 @@ async def health_check():
 
 
 @app.post("/predict")
-async def predict_subscription(data: CustomerInput):
-    logger.info(f"Prediction request received: age={data.age}, job={data.job}, balance={data.balance}")
+def predict_subscription(data: CustomerInput):
+    logger.info("Prediction request received")
     try:
         input_dict = data.model_dump()
         input_df = pd.DataFrame([input_dict])
