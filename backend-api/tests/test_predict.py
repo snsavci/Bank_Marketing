@@ -25,8 +25,8 @@ def test_api_matches_training_encoding():
         encoded[col] = encoded[col].map({"yes": 1, "no": 0})
     encoded = pd.get_dummies(encoded, columns=api.CATEGORICAL_COLS, drop_first=True)
 
-    # Keep rows the API accepts (it rejects negative balance, see api.py validators).
-    df = full[full["balance"] >= 0].sample(100, random_state=0)
+    # 8% of customers have a negative balance, so the sample includes some.
+    df = full.sample(100, random_state=0)
     expected = api.model.predict_proba(encoded.loc[df.index, api.FEATURE_COLS])[:, 1]
 
     request_fields = list(BASE_REQUEST)
@@ -36,6 +36,11 @@ def test_api_matches_training_encoding():
         response = client.post("/predict", json=payload)
         assert response.status_code == 200, (payload, response.text)
         assert response.json()["probability_of_yes"] == pytest.approx(expected_proba, abs=1e-4)
+
+
+def test_response_contains_only_prediction_and_probability():
+    response = client.post("/predict", json=BASE_REQUEST)
+    assert set(response.json()) == {"subscription_predicted", "probability_of_yes"}
 
 
 @pytest.mark.parametrize("field, value", [

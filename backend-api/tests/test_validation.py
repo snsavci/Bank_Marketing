@@ -13,7 +13,7 @@ def post(**overrides):
 
 @pytest.mark.parametrize("field, value", [
     ("age", 17), ("age", 121),
-    ("balance", 10_000_001),
+    ("balance", 10_000_001), ("balance", -10_000_001),
     ("day", 0), ("day", 32),
     ("campaign", 0), ("campaign", 51),
     ("pdays", -2), ("pdays", 1000),
@@ -43,7 +43,7 @@ def test_missing_field_is_rejected(field):
     ("campaign", 1), ("campaign", 50),
     ("pdays", -1), ("pdays", 999),
     ("previous", 0), ("previous", 50),
-    ("balance", 0),
+    ("balance", 0), ("balance", -500), ("balance", -10_000_000), ("balance", 10_000_000),
 ])
 def test_boundary_value_is_accepted(field, value):
     assert post(**{field: value}).status_code == 200

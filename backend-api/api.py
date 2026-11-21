@@ -74,10 +74,6 @@ CATEGORICAL_COLS = [
     'job', 'marital', 'education', 'contact', 'month', 'poutcome'
 ]
 
-CONFIDENCE_HIGH_THRESHOLD = 0.3
-CONFIDENCE_MEDIUM_THRESHOLD = 0.15
-
-
 YesNo = Literal['yes', 'no']
 
 
@@ -89,7 +85,7 @@ class CustomerInput(BaseModel):
     marital: Literal['married', 'single', 'divorced']
     education: Literal['primary', 'secondary', 'tertiary', 'unknown']
     default: YesNo
-    balance: float = Field(ge=0, le=10_000_000)
+    balance: float = Field(ge=-10_000_000, le=10_000_000)
     housing: YesNo
     loan: YesNo
     contact: Literal['cellular', 'telephone', 'unknown']
@@ -142,23 +138,14 @@ def predict_subscription(data: CustomerInput):
         # Apply classification threshold
         final_prediction = 1 if prediction_proba >= PREDICTION_THRESHOLD else 0
 
-        # Determine confidence label
-        confidence_distance = abs(prediction_proba - 0.5)
-        confidence_level = (
-            "High" if confidence_distance > CONFIDENCE_HIGH_THRESHOLD
-            else "Medium" if confidence_distance > CONFIDENCE_MEDIUM_THRESHOLD
-            else "Low"
-        )
-
         logger.info(
             f"Prediction complete: result={'Yes' if final_prediction else 'No'}, "
-            f"proba={prediction_proba:.4f}, confidence={confidence_level}"
+            f"proba={prediction_proba:.4f}"
         )
 
         return {
             "subscription_predicted": "Yes" if final_prediction == 1 else "No",
             "probability_of_yes": round(prediction_proba, 4),
-            "confidence_level": confidence_level,
         }
 
     except Exception as e:
