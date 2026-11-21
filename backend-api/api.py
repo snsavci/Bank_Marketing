@@ -31,36 +31,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load trained Random Forest model
-try:
-    with open('models/bank_marketing_rf_model.pkl', 'rb') as file:
-        model = pickle.load(file)
-    logger.info("Model loaded successfully from models/bank_marketing_rf_model.pkl")
-except FileNotFoundError:
-    logger.critical("Model file not found in 'models/' directory.")
-    raise RuntimeError("Error: Model file not found in 'models/' directory.")
-except Exception as e:
-    logger.critical(f"Error loading model: {str(e)}")
-    raise RuntimeError(f"Error loading model: {str(e)}")
+DEFAULT_THRESHOLD = 0.6
 
-# Load expected feature columns list
-try:
-    with open('config/feature_cols.json', 'r') as file:
-        FEATURE_COLS = json.load(file)
-    logger.info(f"Feature list loaded successfully. Total features: {len(FEATURE_COLS)}")
-except FileNotFoundError:
-    logger.critical("Feature list file not found in 'config/' directory.")
-    raise RuntimeError("Error: Feature list file not found in 'config/' directory.")
 
-# Load optimal classification threshold if available
-try:
-    with open('config/optimal_threshold.json', 'r') as file:
-        threshold_data = json.load(file)
-        PREDICTION_THRESHOLD = threshold_data.get('optimal_threshold', 0.6)
-    logger.info(f"Prediction threshold loaded: {PREDICTION_THRESHOLD}")
-except FileNotFoundError:
-    PREDICTION_THRESHOLD = 0.6
-    logger.warning("optimal_threshold.json not found. Using default threshold: 0.6")
+def load_artifacts():
+    """Load the trained model, the expected feature columns and the decision threshold."""
+    try:
+        with open('models/bank_marketing_rf_model.pkl', 'rb') as file:
+            model = pickle.load(file)
+        with open('config/feature_cols.json', 'r') as file:
+            feature_cols = json.load(file)
+    except Exception as e:
+        logger.critical(f"Error loading model artifacts: {e}")
+        raise RuntimeError(f"Error loading model artifacts: {e}")
+
+    # The threshold file is optional, the other two are required.
+    try:
+        with open('config/optimal_threshold.json', 'r') as file:
+            threshold = json.load(file).get('optimal_threshold', DEFAULT_THRESHOLD)
+    except FileNotFoundError:
+        threshold = DEFAULT_THRESHOLD
+        logger.warning(f"optimal_threshold.json not found. Using default threshold: {threshold}")
+
+    logger.info(f"Artifacts loaded: {len(feature_cols)} features, threshold={threshold}")
+    return model, feature_cols, threshold
+
+
+model, FEATURE_COLS, PREDICTION_THRESHOLD = load_artifacts()
 
 CATEGORICAL_COLS = [
     'job', 'marital', 'education', 'contact', 'month', 'poutcome'
@@ -126,11 +123,7 @@ async def predict_subscription(data: CustomerInput):
         input_df = input_df.drop(columns=CATEGORICAL_COLS)
 
         # Fill missing columns so input matches model expected features
-        missing_cols = set(FEATURE_COLS) - set(input_df.columns)
-        for c in missing_cols:
-            input_df[c] = 0
-
-        final_input_df = input_df[FEATURE_COLS]
+        final_input_df = input_df.reindex(columns=FEATURE_COLS, fill_value=0)
 
         # Calculate predicted probability
         prediction_proba = model.predict_proba(final_input_df)[0][1]
