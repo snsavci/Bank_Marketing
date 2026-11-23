@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -33,6 +35,19 @@ def test_invalid_value_is_rejected_by_its_own_field(field, value, rest):
     response = post(**{**rest, field: value})
     assert response.status_code == 422
     # Exactly one error, located at the field itself and not at the cross-field rule (loc ["body"]).
+    assert [error["loc"] for error in response.json()["detail"]] == [["body", field]]
+
+
+@pytest.mark.parametrize("field, value", [
+    ("balance", float("nan")), ("balance", float("inf")), ("balance", float("-inf")),
+    ("age", float("nan")),
+])
+def test_non_finite_number_is_rejected_with_422(field, value):
+    # Python's JSON parser accepts NaN and Infinity, which are not valid JSON. The rejection
+    # used to echo the bad value back in the 422 body and crash the response with a 500.
+    body = json.dumps({**BASE_REQUEST, field: value})   # json.dumps writes NaN / Infinity
+    response = client.post("/predict", content=body, headers={"Content-Type": "application/json"})
+    assert response.status_code == 422
     assert [error["loc"] for error in response.json()["detail"]] == [["body", field]]
 
 

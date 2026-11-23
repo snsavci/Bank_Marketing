@@ -1,9 +1,13 @@
 # File: backend-api/api.py
 import logging
+import math
 import warnings
 from pathlib import Path
 from typing import Literal
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 import pickle
 import json
@@ -110,6 +114,20 @@ class CustomerInput(BaseModel):
         if self.poutcome != 'unknown' and self.previous == 0:
             raise ValueError(f"poutcome '{self.poutcome}' needs an earlier contact (previous >= 1)")
         return self
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request: Request, exc: RequestValidationError):
+    """Same 422 body as FastAPI's default, except that a NaN or Infinity the client sent is not echoed back.
+
+    Python's JSON parser accepts NaN and Infinity. FastAPI puts the rejected value into the
+    error ("input"), and serialising it for the response then fails with a 500."""
+    errors = [
+        {key: value for key, value in error.items()
+         if not (key == "input" and isinstance(value, float) and not math.isfinite(value))}
+        for error in exc.errors()
+    ]
+    return JSONResponse(status_code=422, content={"detail": jsonable_encoder(errors)})
 
 
 @app.get("/health")
