@@ -1,0 +1,10 @@
+-r requirements.txt
+
+# tests (TestClient needs httpx2; plain httpx still works but is deprecated)
+pytest>=8.0
+httpx2
+
+# notebook/eda-and-modeling.ipynb
+matplotlib>=3.8
+jupyter
+ipykernel
