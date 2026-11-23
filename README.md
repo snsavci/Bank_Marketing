@@ -23,9 +23,8 @@ Bank_Marketing/
 │   ├── src/
 │   │   └── PredictionScreen.js  # Main Prediction Screen
 │   └── package.json         # Node.js dependencies
-├── data/                    # Training and Testing datasets
-│   ├── train.csv
-│   └── test.csv
+├── data/                    # Training dataset
+│   └── train.csv
 └── notebook/                # EDA and Modeling
     └── eda-and-modeling.ipynb
 ```
