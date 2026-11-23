@@ -7,9 +7,8 @@ venv/
 .env
 .pytest_cache/
 
-# --- Node/React Native (Frontend) ---
+# --- Node (Frontend) ---
 node_modules/
-.expo/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

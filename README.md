@@ -3,7 +3,7 @@
 
 # 🏦 Bank Marketing - Term Deposit Prediction
 
-This project is an end-to-end machine learning application designed to predict the probability of customers subscribing to a term deposit. It features a high-performance API architecture built with FastAPI and a modern, enterprise-grade user interface developed with React Native (Expo).
+This project is an end-to-end machine learning application designed to predict the probability of customers subscribing to a term deposit. It features a high-performance API architecture built with FastAPI and a modern, enterprise-grade user interface developed with React (Vite).
 
 ---
 
@@ -18,10 +18,16 @@ Bank_Marketing/
 │   ├── config/
 │   │   └── optimal_threshold.json       # Optimized prediction threshold
 │   └── requirements.txt     # Python dependencies
-├── frontend-app/            # React Native (Expo) Frontend
-│   ├── App.js               # Root component
+├── frontend-app/            # React (Vite) Frontend
+│   ├── index.html           # Page shell
+│   ├── vite.config.js       # Dev server port (5173)
+│   ├── .env.example         # API address template (VITE_API_URL)
 │   ├── src/
-│   │   └── PredictionScreen.js  # Main Prediction Screen
+│   │   ├── main.jsx             # Entry point
+│   │   ├── PredictionScreen.jsx # Main Prediction Screen
+│   │   ├── predictionForm.js    # Form validation and request building
+│   │   ├── predictionForm.test.js  # Tests for the form logic
+│   │   └── styles.css           # Navy and gold theme
 │   └── package.json         # Node.js dependencies
 ├── data/                    # Training dataset
 │   └── train.csv
@@ -36,7 +42,7 @@ Bank_Marketing/
 ### Prerequisites
 
 * Python 3.11+
-* Node.js 16+
+* Node.js 20.19+ (or 22.12+)
 * Anaconda (Recommended for virtual environment management)
 
 ---
@@ -76,26 +82,24 @@ npm install
 Launch the Application:
 
 ```
-npx expo start
+npm run dev
 ```
 
-Press **w** to open in your web browser.
+Open [http://localhost:5173](http://localhost:5173) in your web browser. The port is fixed: if it is taken, Vite stops instead of moving to another port, because the API only accepts requests from this address.
+
+Other commands: `npm test` runs the tests of the form logic, `npm run build` creates a production build.
 
 ---
 
 ### 3. API Connection Configuration
 
-Check the `API_URL` variable in `frontend-app/src/PredictionScreen.js`:
+The form sends its requests to `http://127.0.0.1:8000` by default. To use another address, copy `frontend-app/.env.example` to `frontend-app/.env` and set `VITE_API_URL`:
 
-**Web Browser / Emulator:**
-```js
-const API_URL = 'http://127.0.0.1:8000/predict';
+```
+VITE_API_URL=http://127.0.0.1:8000
 ```
 
-**Physical Device Testing:** Use your computer's local IP address:
-```js
-const API_URL = 'http://192.168.x.x:8000/predict'; // Replace x.x with your actual local IP
-```
+The API accepts requests from `http://localhost:5173` and `http://127.0.0.1:5173` (`ALLOWED_ORIGINS` in `backend-api/api.py`). If you change the port in `frontend-app/vite.config.js`, change it there too.
 
 ---
 
@@ -133,17 +137,9 @@ pip install --force-reinstall -r requirements.txt
 
 Ensure the Age input is between 18 and 120, and Balance is a valid number.
 
-**Icons Not Rendering**
+**The Form Cannot Reach the API (Failed to fetch / CORS)**
 
-If icons are missing, refresh the library using:
-
-```
-npx expo install @expo/vector-icons
-```
-
-**Physical Device Cannot Reach API**
-
-Update `API_URL` in `PredictionScreen.js` to use your computer's local IP address instead of `127.0.0.1`.
+Check that the API is running (`/health` answers), that `VITE_API_URL` in `frontend-app/.env` points to it, and that the page is open at `http://localhost:5173` or `http://127.0.0.1:5173`.
 
 ---
 

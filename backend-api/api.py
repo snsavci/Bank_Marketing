@@ -29,11 +29,11 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Origins of the Expo web dev server (npm run web). Native Expo Go builds are
-# not subject to CORS. Add the new origin here if Expo starts on another port.
+# Origins of the Vite dev server (npm run dev in frontend-app). The port is fixed by
+# strictPort in frontend-app/vite.config.js; change both together.
 ALLOWED_ORIGINS = [
-    "http://localhost:8081",
-    "http://127.0.0.1:8081",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
 
 app.add_middleware(

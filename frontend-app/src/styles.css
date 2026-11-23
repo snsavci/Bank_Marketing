@@ -1,0 +1,129 @@
+:root {
+  --navy: #0a1a33;
+  --gold: #cfaf70;
+  --success: #2ecc71;
+  --danger: #e74c3c;
+  --text: #1e293b;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--navy);
+  color: var(--navy);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+.page {
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 40px 20px;
+}
+
+.card {
+  width: 100%;
+  max-width: 600px;
+  align-self: flex-start;
+  padding: 30px;
+  background: #fff;
+  border-radius: 15px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.card-header {
+  margin-bottom: 30px;
+  padding-bottom: 25px;
+  border-bottom: 1px solid #d0d0d0;
+  text-align: center;
+}
+
+.card-header h1 {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.card-header p {
+  margin: 5px 0 0;
+  font-size: 18px;
+  color: var(--gold);
+}
+
+.field { margin-top: 24px; }
+
+.field label {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.icon { margin-right: 8px; color: var(--gold); }
+
+input, select {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  border: 1.5px solid var(--gold);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+}
+
+input::placeholder { color: #9ca3af; }
+
+input:focus-visible, select:focus-visible, .submit:focus-visible {
+  outline: 3px solid var(--navy);
+  outline-offset: 2px;
+}
+
+.field-error, .banner-error {
+  margin: 6px 0 0;
+  color: var(--danger);
+  font-size: 14px;
+  white-space: pre-line;
+}
+
+.banner-error {
+  margin-top: 20px;
+  padding: 12px 14px;
+  border-left: 4px solid var(--danger);
+  background: #fdf0ee;
+}
+
+.submit {
+  display: block;
+  width: 100%;
+  margin-top: 40px;
+  padding: 14px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--gold);
+  color: var(--navy);
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+}
+
+.submit:disabled { opacity: 0.6; cursor: progress; }
+
+.result {
+  margin-top: 32px;
+  padding: 22px;
+  border-left: 4px solid var(--gold);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.result h2 { margin: 0 0 10px; font-size: 18px; text-transform: uppercase; }
+.result p { margin: 5px 0 0; font-size: 18px; }
+.result strong.yes { color: var(--success); }
+.result strong.no { color: var(--danger); }

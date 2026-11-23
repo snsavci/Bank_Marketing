@@ -54,8 +54,8 @@ def test_every_choice_gets_a_prediction(field, value):
 
 
 def test_fields_from_the_old_15_field_form_are_ignored():
-    """The Expo client still sends day, month, contact, education, default and loan.
-    They must not be rejected, and they must not change the score."""
+    """A client built for the old 15-field model still sends day, month, contact, education,
+    default and loan. They must not be rejected, and they must not change the score."""
     old_fields = {"day": 15, "month": "may", "contact": "cellular",
                   "education": "tertiary", "default": "no", "loan": "no"}
     with_old_fields = client.post("/predict", json={**BASE_REQUEST, **old_fields})
