@@ -10,5 +10,5 @@ def test_health_reports_loaded_artifacts():
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ok"
-    assert body["feature_count"] == len(api.FEATURE_COLS)
+    assert body["feature_count"] == len(api.model.feature_names_in_)
     assert body["threshold"] == api.PREDICTION_THRESHOLD

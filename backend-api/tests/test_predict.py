@@ -1,3 +1,5 @@
+from typing import Literal, get_args, get_origin
+
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
@@ -14,22 +16,16 @@ def predict_proba(**overrides):
     return response.json()["probability_of_yes"]
 
 
-def test_api_matches_training_encoding():
-    """API probabilities must equal the model's output on training-style encoding
-    (full-frame pd.get_dummies(drop_first=True), as done in the notebook)."""
+def test_api_matches_model_on_training_rows():
+    """The API must hand the pipeline the same values as the training frame,
+    so its probabilities equal the model's own output on real rows."""
     full = pd.read_csv(BACKEND_DIR.parent / "data" / "train.csv", sep=";")
-
-    # Encode the whole dataset first, exactly like the notebook, then sample rows.
-    encoded = full.drop(columns=["y", "duration"]).copy()
-    for col in ["default", "housing", "loan"]:
-        encoded[col] = encoded[col].map({"yes": 1, "no": 0})
-    encoded = pd.get_dummies(encoded, columns=api.CATEGORICAL_COLS, drop_first=True)
 
     # 8% of customers have a negative balance, so the sample includes some.
     df = full.sample(100, random_state=0)
-    expected = api.model.predict_proba(encoded.loc[df.index, api.FEATURE_COLS])[:, 1]
-
     request_fields = list(BASE_REQUEST)
+    expected = api.model.predict_proba(df[request_fields])[:, 1]
+
     for (_, row), expected_proba in zip(df.iterrows(), expected):
         payload = {k: (row[k].item() if hasattr(row[k], "item") else row[k]) for k in request_fields}
         payload["balance"] = float(payload["balance"])
@@ -43,17 +39,55 @@ def test_response_contains_only_prediction_and_probability():
     assert set(response.json()) == {"subscription_predicted", "probability_of_yes"}
 
 
-@pytest.mark.parametrize("field, value", [
-    ("poutcome", "success"),
-    ("poutcome", "failure"),
-    ("job", "retired"),
-    ("job", "student"),
-    ("marital", "single"),
-    ("education", "tertiary"),
-    ("contact", "telephone"),
-    ("month", "mar"),
-    ("month", "oct"),
+# Every choice the form can send, taken from the request model so a new choice is covered automatically.
+CHOICES = [(name, value)
+           for name, field in api.CustomerInput.model_fields.items() if get_origin(field.annotation) is Literal
+           for value in get_args(field.annotation)]
+
+
+@pytest.mark.parametrize("field, value", CHOICES)
+def test_every_choice_gets_a_prediction(field, value):
+    overrides = {field: value}
+    if field == "poutcome" and value != "unknown":
+        overrides.update(previous=1, pdays=90)  # a known outcome needs an earlier contact
+    predict_proba(**overrides)
+
+
+def test_fields_from_the_old_15_field_form_are_ignored():
+    """The Expo client still sends day, month, contact, education, default and loan.
+    They must not be rejected, and they must not change the score."""
+    old_fields = {"day": 15, "month": "may", "contact": "cellular",
+                  "education": "tertiary", "default": "no", "loan": "no"}
+    with_old_fields = client.post("/predict", json={**BASE_REQUEST, **old_fields})
+    assert with_old_fields.status_code == 200
+    assert with_old_fields.json() == client.post("/predict", json=BASE_REQUEST).json()
+
+
+@pytest.mark.parametrize("overrides", [
+    {"poutcome": "success", "previous": 1, "pdays": 90},
+    {"poutcome": "failure", "previous": 1, "pdays": 90},
+    {"job": "retired"},
+    {"job": "student"},
+    {"marital": "single"},
+    {"housing": "yes"},
+    {"campaign": 12},
+    {"age": 65},
+    {"balance": 20000.0},
 ])
-def test_categorical_input_changes_prediction(field, value):
-    """Every categorical field must reach the model, not be silently ignored."""
-    assert predict_proba(**{field: value}) != predict_proba()
+def test_input_changes_prediction(overrides):
+    """Every field must reach the model, not be silently ignored."""
+    assert predict_proba(**overrides) != predict_proba()
+
+
+@pytest.mark.parametrize("overrides", [{"pdays": 400}, {"previous": 10}])
+def test_pdays_and_previous_each_change_prediction(overrides):
+    """The validator ties both fields to the base request, so neither can change alone from it.
+    Compare against a customer who already has an earlier contact instead."""
+    earlier_contact = {"previous": 2, "pdays": 90}
+    assert predict_proba(**{**earlier_contact, **overrides}) != predict_proba(**earlier_contact)
+
+
+def test_a_successful_earlier_campaign_scores_above_an_unknown_outcome():
+    """Direction check: in the training data 'success' converts at about 65%, far above the 12% base rate."""
+    earlier_contact = {"previous": 1, "pdays": 90}
+    assert predict_proba(poutcome="success", **earlier_contact) > predict_proba(poutcome="unknown", **earlier_contact)

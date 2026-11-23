@@ -1,13 +1,15 @@
 # File: backend-api/api.py
 import logging
+import warnings
 from pathlib import Path
 from typing import Literal
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 import pickle
 import json
 import pandas as pd
 from fastapi.middleware.cors import CORSMiddleware
+from sklearn.exceptions import InconsistentVersionWarning
 
 # Set up logging
 logging.basicConfig(
@@ -38,64 +40,76 @@ app.add_middleware(
 )
 
 BASE_DIR = Path(__file__).resolve().parent
-DEFAULT_THRESHOLD = 0.6
 
 
 def load_artifacts():
-    """Load the trained model, the expected feature columns and the decision threshold."""
+    """Load the trained pipeline (one-hot encoding + random forest) and the decision threshold.
+
+    Both files are written by notebook/eda-and-modeling.ipynb. There is no fallback
+    threshold: the right value depends on the trained model, so a missing file is an error.
+    Anything wrong with either file stops the start-up here instead of surfacing on a request.
+    """
     try:
         with open(BASE_DIR / 'models' / 'bank_marketing_rf_model.pkl', 'rb') as file:
-            model = pickle.load(file)
-        with open(BASE_DIR / 'config' / 'feature_cols.json', 'r') as file:
-            feature_cols = json.load(file)
+            # Unpickling a model saved by another scikit-learn version only emits a warning and then
+            # predicts from a layout that may have changed. Turn that warning into a start-up error.
+            with warnings.catch_warnings():
+                warnings.simplefilter('error', InconsistentVersionWarning)
+                model = pickle.load(file)
+        with open(BASE_DIR / 'config' / 'optimal_threshold.json', 'r') as file:
+            threshold = json.load(file)['optimal_threshold']
+        if not (isinstance(threshold, float) and 0 < threshold < 1):
+            raise ValueError(f"optimal_threshold must be a number strictly between 0 and 1, got {threshold!r}")
     except Exception as e:
         logger.critical(f"Error loading model artifacts: {e}")
-        raise RuntimeError(f"Error loading model artifacts: {e}")
+        raise RuntimeError(f"Error loading model artifacts: {e}") from e
 
-    # The forest was pickled with n_jobs=-1. For a single row the thread pool
-    # overhead costs more than the prediction itself.
-    model.n_jobs = 1
-
-    # The threshold file is optional, the other two are required.
-    try:
-        with open(BASE_DIR / 'config' / 'optimal_threshold.json', 'r') as file:
-            threshold = json.load(file).get('optimal_threshold', DEFAULT_THRESHOLD)
-    except FileNotFoundError:
-        threshold = DEFAULT_THRESHOLD
-        logger.warning(f"optimal_threshold.json not found. Using default threshold: {threshold}")
-
-    logger.info(f"Artifacts loaded: {len(feature_cols)} features, threshold={threshold}")
-    return model, feature_cols, threshold
+    logger.info(f"Artifacts loaded: {len(model.feature_names_in_)} input fields, threshold={threshold}")
+    return model, threshold
 
 
-model, FEATURE_COLS, PREDICTION_THRESHOLD = load_artifacts()
-
-CATEGORICAL_COLS = [
-    'job', 'marital', 'education', 'contact', 'month', 'poutcome'
-]
+model, PREDICTION_THRESHOLD = load_artifacts()
 
 YesNo = Literal['yes', 'no']
 
 
 class CustomerInput(BaseModel):
+    """The fields the form asks for. Their names must match the columns the pipeline was trained on."""
+
+    # The old 15-field client also sends day, month, contact, education, default and loan.
+    # The model does not use them, so they are dropped instead of rejected.
+    model_config = ConfigDict(extra='ignore')
+
     age: int = Field(ge=18, le=120)
     job: Literal['management', 'technician', 'blue-collar', 'admin.', 'services',
                  'retired', 'self-employed', 'unemployed', 'housemaid', 'student',
                  'entrepreneur', 'unknown']
     marital: Literal['married', 'single', 'divorced']
-    education: Literal['primary', 'secondary', 'tertiary', 'unknown']
-    default: YesNo
     balance: float = Field(ge=-10_000_000, le=10_000_000)
     housing: YesNo
-    loan: YesNo
-    contact: Literal['cellular', 'telephone', 'unknown']
-    day: int = Field(ge=1, le=31)
-    month: Literal['jan', 'feb', 'mar', 'apr', 'may', 'jun',
-                   'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+    # Contacts in the current campaign. The training data tops out at 63 (4 rows above 50);
+    # trees treat anything above their last split the same, so 50 is a sanity limit only.
     campaign: int = Field(ge=1, le=50)
+    # The three fields below describe one fact: was the customer contacted in an earlier
+    # campaign, and how did it end. See the validator.
     pdays: int = Field(ge=-1, le=999)
+    # Same sanity-limit reasoning as campaign: the training data tops out at 275 (4 rows above 50).
     previous: int = Field(ge=0, le=50)
     poutcome: Literal['unknown', 'failure', 'other', 'success']
+
+    @model_validator(mode='after')
+    def previous_campaign_fields_agree(self):
+        """Two rules, both of which hold for all 45,211 training rows:
+        1. previous=0 and pdays=-1 mean "not contacted in an earlier campaign" and go together.
+        2. A recorded outcome (failure, other, success) needs an earlier contact.
+        The reverse is not required: 5 training rows (2 subscribed) have earlier contacts but
+        poutcome 'unknown', which is a real state ("contacted, outcome not recorded")."""
+        if (self.previous == 0) != (self.pdays == -1):
+            raise ValueError("previous and pdays disagree: previous=0 goes with pdays=-1 "
+                             "(not contacted before), previous >= 1 needs pdays >= 0")
+        if self.poutcome != 'unknown' and self.previous == 0:
+            raise ValueError(f"poutcome '{self.poutcome}' needs an earlier contact (previous >= 1)")
+        return self
 
 
 @app.get("/health")
@@ -105,7 +119,7 @@ async def health_check():
         "status": "ok",
         "model": "Random Forest Classifier",
         "threshold": PREDICTION_THRESHOLD,
-        "feature_count": len(FEATURE_COLS),
+        "feature_count": len(model.feature_names_in_),
     }
 
 
@@ -113,27 +127,11 @@ async def health_check():
 def predict_subscription(data: CustomerInput):
     logger.info("Prediction request received")
     try:
-        input_dict = data.model_dump()
-        input_df = pd.DataFrame([input_dict])
-
-        # Convert yes/no strings to binary 1/0
-        binary_map = {'yes': 1, 'no': 0}
-        for col in ['default', 'housing', 'loan']:
-            input_df[col] = input_df[col].map(binary_map)
-
-        # One-hot encode categorical features by hand. pd.get_dummies(drop_first=True)
-        # must not be used here: on a single row it drops the only category present,
-        # so every categorical value would be ignored. The baseline category dropped
-        # at training time has no column in FEATURE_COLS, so it stays all-zero below.
-        for col in CATEGORICAL_COLS:
-            input_df[f"{col}_{input_df.at[0, col]}"] = 1
-        input_df = input_df.drop(columns=CATEGORICAL_COLS)
-
-        # Fill missing columns so input matches model expected features
-        final_input_df = input_df.reindex(columns=FEATURE_COLS, fill_value=0)
+        # The pipeline picks its columns by name and one-hot encodes the text values itself.
+        input_df = pd.DataFrame([data.model_dump()])
 
         # Calculate predicted probability
-        prediction_proba = model.predict_proba(final_input_df)[0][1]
+        prediction_proba = model.predict_proba(input_df)[0][1]
 
         # Apply classification threshold
         final_prediction = 1 if prediction_proba >= PREDICTION_THRESHOLD else 0

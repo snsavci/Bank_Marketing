@@ -16,7 +16,6 @@ Bank_Marketing/
 │   ├── models/
 │   │   └── bank_marketing_rf_model.pkl  # Trained Random Forest model
 │   ├── config/
-│   │   ├── feature_cols.json            # Feature columns expected by the model
 │   │   └── optimal_threshold.json       # Optimized prediction threshold
 │   └── requirements.txt     # Python dependencies
 ├── frontend-app/            # React Native (Expo) Frontend
@@ -37,7 +36,7 @@ Bank_Marketing/
 
 ### Prerequisites
 
-* Python 3.10+
+* Python 3.11+
 * Node.js 16+
 * Anaconda (Recommended for virtual environment management)
 
@@ -49,7 +48,7 @@ Open Anaconda Prompt:
 
 ```
 cd backend-api
-conda create -n bank_api python=3.10
+conda create -n bank_api python=3.11
 conda activate bank_api
 pip install -r requirements.txt
 ```
@@ -105,9 +104,9 @@ const API_URL = 'http://192.168.x.x:8000/predict'; // Replace x.x with your actu
 
 If you want to retrain the model from scratch:
 
-1. Open `notebook/eda-and-modeling.ipynb` in Kaggle or Jupyter
+1. Open `notebook/eda-and-modeling.ipynb` in Jupyter, in the same environment as the API (the versions in `backend-api/requirements.txt` must match, otherwise the saved model cannot be loaded)
 2. Run all cells top to bottom
-3. The notebook will automatically save the updated model and config files to the correct `backend-api/` directories
+3. The notebook saves the model to `backend-api/models/` and the threshold to `backend-api/config/`
 
 ---
 
@@ -125,10 +124,10 @@ If you want to retrain the model from scratch:
 
 **NumPy/Sklearn Incompatibility**
 
-If you encounter a `ValueError: numpy.dtype size changed` error, run:
+If you encounter a `ValueError: numpy.dtype size changed` error, or the API refuses to start because of a scikit-learn version mismatch, reinstall the pinned versions (do not upgrade them, the saved model was built with exactly these):
 
 ```
-pip install --upgrade numpy scikit-learn
+pip install --force-reinstall -r requirements.txt
 ```
 
 **Validation Error (422)**
