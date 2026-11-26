@@ -3,7 +3,36 @@
 
 # 🏦 Bank Marketing - Term Deposit Prediction
 
-This project is an end-to-end machine learning application designed to predict the probability of customers subscribing to a term deposit. It features a high-performance API architecture built with FastAPI and a modern, enterprise-grade user interface developed with React (Vite).
+This project is an end-to-end machine learning application designed to predict the probability of customers subscribing to a term deposit. It consists of a FastAPI service that scores one customer at a time and a small React (Vite) form that calls it. The model is a Random Forest trained on a public dataset; what it can and cannot do is described below.
+
+---
+
+## 📊 Data, Model and Results
+
+**Data.** `data/train.csv` is the UCI [Bank Marketing](https://archive.ics.uci.edu/dataset/222/bank+marketing) dataset (Moro, Cortez and Rita, 2014; licensed CC BY 4.0 on the UCI page): 45,211 phone calls of a Portuguese bank, 11.7% of which ended with a term deposit subscription.
+
+**Model.** One scikit-learn pipeline (one-hot encoding and a Random Forest with 300 trees), tuned with a randomized search on PR-AUC. The form asks for exactly the nine fields the model uses: age, job, marital status, balance, housing loan, number of contacts in this campaign, and the previous-campaign block (days since last contact, number of earlier contacts, outcome). The `duration` column is not used, because the length of a call is only known after the call, so a model that uses it cannot score a customer before calling. `day`, `month` and `contact` are left out as well: the file is in time order, they describe when and how a call happened rather than who the customer is, and they did not help in a time-forward check (see the notebook, section 3).
+
+**Results.** 60/20/20 stratified train / validation / test split, threshold 0.184 chosen on the validation part (maximum F1), test part used once:
+
+| Metric (test part, 9,043 customers) | Value |
+|---|---|
+| AUC | 0.749 (95% interval 0.732-0.767) |
+| PR-AUC | 0.385 (a model without skill gets 0.117) |
+| Precision / recall at the threshold | 0.417 / 0.415 |
+| Customers with the highest 10% of scores | 44.3% subscribe, 3.8 times the overall rate |
+
+The probabilities are calibrated on this data: the mean prediction is 0.1175 against a true rate of 0.117. The practical use is ranking, that is, calling the customers with the highest scores first.
+
+**Limits.**
+
+* **Accuracy is not reported as a result.** It is 0.864 at the chosen threshold, which is below the 0.883 of always answering "no". With an 88/12 split it says nothing useful.
+* **A random split is optimistic for this file.** The rows are in time order and the subscription rate climbs from about 3% at the start to 47% in the last tenth. Trained on earlier rows and tested on the following block (expanding window, 5 folds), the AUC is 0.54-0.67 (mean 0.60), against 0.74 for a random 5-fold split of the same model. Read 0.75 as the quality for customers drawn from the same mix as the training file, and 0.55-0.67 as the range to expect if the mix changes.
+* **The saved model is refit on all 45,211 rows**, so the numbers above describe the model trained on 60% of the rows. The refit itself has no untouched holdout.
+* **Other model families were only briefly tried.** A Logistic Regression baseline built the same way scores lower (validation AUC 0.720 against 0.747). A HistGradientBoosting model scored slightly higher in a random 5-fold check on all 15 columns (AUC 0.800 against 0.788), but that was a random split only, so the Random Forest was kept.
+* It is a small student project on one old dataset, not a validated scoring system for real customers.
+
+The full analysis, with every number above, is in `notebook/eda-and-modeling.ipynb`.
 
 ---
 
@@ -118,7 +147,7 @@ If you want to retrain the model from scratch:
 * Model: Random Forest Classifier (Scikit-learn)
 * Data Validation: Tiered validation using Pydantic (backend) + client-side checks (frontend)
 * UI/UX: Corporate Navy & Gold color palette with FontAwesome icon integration
-* Security: Configured CORS for cross-platform communication
+* CORS: the API only accepts requests from the local Vite dev server (`http://localhost:5173`, `http://127.0.0.1:5173`)
 * Logging: Server-side request/response and prediction logging
 
 ---
