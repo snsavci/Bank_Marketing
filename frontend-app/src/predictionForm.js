@@ -37,37 +37,29 @@ const FIELD_NAMES = {
 // Only plain decimal text is a number here: Number() would also take "020", "+5", "4e1", "0x28" or "1e999".
 // "-" and blank text do not match either (Number("") would be 0).
 const PLAIN_NUMBER = /^-?(0|[1-9]\d*)(\.\d+)?$/;
-const LEADING_ZEROS = /^-?0\d/;
-
-function parseNumber(text) {
-  const trimmed = text.trim();
-  if (!PLAIN_NUMBER.test(trimmed)) return null;
-  const value = Number(trimmed);
-  return Number.isFinite(value) ? value : null; // a very long digit string can still overflow to Infinity
-}
 
 function checkNumber(form, field, { integer }, errors) {
   const [min, max] = LIMITS[field];
   const text = form[field].trim();
+  // isFinite: a very long digit string can still overflow to Infinity
+  const value = PLAIN_NUMBER.test(text) ? Number(text) : NaN;
+  if (Number.isFinite(value) && (!integer || Number.isInteger(value)) && value >= min && value <= max) {
+    return value;
+  }
+
+  const name = FIELD_NAMES[field];
   const withoutZeros = text.replace(/^(-?)0+(?=\d)/, '$1');
-  if (LEADING_ZEROS.test(text) && PLAIN_NUMBER.test(withoutZeros)) {
-    errors[field] = `${FIELD_NAMES[field]} must not start with a zero: write ${withoutZeros} instead of ${text}.`;
-    return null;
+  if (withoutZeros !== text && PLAIN_NUMBER.test(withoutZeros)) {
+    errors[field] = `${name} must not start with a zero: write ${withoutZeros} instead of ${text}.`;
+  } else if (text !== '' && !PLAIN_NUMBER.test(text) && Number.isFinite(Number(text))) {
+    // Number() reads "4e1", "+5" or ".5" as numbers, so a range message would read as wrong:
+    // the value they stand for may be in range.
+    errors[field] = `${name} must be written as a plain ${integer ? 'whole number, like 40' : 'number, like 1500.5'}.`;
+  } else {
+    const kind = integer ? 'a whole number' : 'a number';
+    errors[field] = `${name} must be ${kind} from ${min.toLocaleString('en-US')} to ${max.toLocaleString('en-US')}.`;
   }
-  // Text that Number() reads as a number but that is not written plainly ("4e1", "+5", ".5"):
-  // a range message would read as wrong, because the value it stands for may be in range.
-  if (text !== '' && !PLAIN_NUMBER.test(text) && Number.isFinite(Number(text))) {
-    errors[field] = `${FIELD_NAMES[field]} must be written as a plain ${integer ? 'whole number, like 40' : 'number, like 1500.5'}.`;
-    return null;
-  }
-  const value = parseNumber(text);
-  const kind = integer ? 'a whole number' : 'a number';
-  const range = `from ${min.toLocaleString('en-US')} to ${max.toLocaleString('en-US')}`;
-  if (value === null || (integer && !Number.isInteger(value)) || value < min || value > max) {
-    errors[field] = `${FIELD_NAMES[field]} must be ${kind} ${range}.`;
-    return null;
-  }
-  return value;
+  return null;
 }
 
 function checkChoice(form, field, allowed, label, errors) {
