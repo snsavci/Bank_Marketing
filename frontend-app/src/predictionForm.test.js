@@ -69,6 +69,53 @@ describe('buildRequest', () => {
     expect(errorsFor({ ...valid, balance: '1e999' })).toHaveProperty('balance');
   });
 
+  const earlier = { ...valid, earlier: 'failure', previous: '1', pdays: '30' };
+
+  it.each([
+    ['age', '020', 'Age must not start with a zero: write 20 instead of 020.'],
+    ['balance', '007.5', 'Balance must not start with a zero: write 7.5 instead of 007.5.'],
+    ['balance', '-020', 'Balance must not start with a zero: write -20 instead of -020.'],
+    ['campaign', '01', 'Contacts in this campaign must not start with a zero: write 1 instead of 01.'],
+    ['previous', '02', 'Number of earlier contacts must not start with a zero: write 2 instead of 02.'],
+    ['pdays', '00', 'Days since the last contact must not start with a zero: write 0 instead of 00.'],
+  ])('%s %j has leading zeros and is rejected with a message that shows the fix', (field, value, message) => {
+    expect(errorsFor({ ...earlier, [field]: value })[field]).toBe(message);
+  });
+
+  it.each([
+    ['age', '4e1'], ['age', '+40'], ['age', '0x28'], ['age', '01e2'],
+    ['balance', '1e3'], ['balance', '.5'], ['balance', '5.'], ['balance', '+5'],
+  ])('%s %j is not a plain decimal number and is rejected', (field, value) => {
+    expect(errorsFor({ ...valid, [field]: value })).toHaveProperty(field);
+  });
+
+  it.each([
+    ['age', '4e1', 'Age must be written as a plain whole number, like 40.'],
+    ['age', '01e2', 'Age must be written as a plain whole number, like 40.'],
+    ['campaign', '+2', 'Contacts in this campaign must be written as a plain whole number, like 40.'],
+    ['balance', '1e3', 'Balance must be written as a plain number, like 1500.5.'],
+    ['balance', '.5', 'Balance must be written as a plain number, like 1500.5.'],
+  ])('%s %j that Number() would read gets the plain-number message, not a range message', (field, value, message) => {
+    expect(errorsFor({ ...valid, [field]: value })[field]).toBe(message);
+  });
+
+  it.each([
+    ['age', 'abc'], ['age', '1e999'], ['balance', '-'],
+  ])('%s %j that is not a number at all keeps the range message', (field, value) => {
+    expect(errorsFor({ ...valid, [field]: value })[field]).toMatch(/^(Age|Balance) must be a (whole )?number from /);
+  });
+
+  it.each([
+    ['balance', '0', 0], ['balance', '-0.5', -0.5], ['balance', '0.50', 0.5],
+    ['balance', '1500.25', 1500.25], ['age', '40', 40],
+  ])('%s %j is a plain number and accepted', (field, value, expected) => {
+    expect(buildRequest({ ...valid, [field]: value }).payload[field]).toBe(expected);
+  });
+
+  it('a pdays of 0 is accepted', () => {
+    expect(buildRequest({ ...earlier, pdays: '0' }).payload.pdays).toBe(0);
+  });
+
   it.each([
     ['age', '40.5'], ['campaign', '1.5'],
   ])('%s %j must be a whole number', (field, value) => {

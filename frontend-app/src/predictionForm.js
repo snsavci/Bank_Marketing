@@ -34,16 +34,33 @@ const FIELD_NAMES = {
   previous: 'Number of earlier contacts', pdays: 'Days since the last contact',
 };
 
-// Number("") is 0, so blank text is rejected before parsing. Infinity (from "1e999") and NaN fail isFinite.
+// Only plain decimal text is a number here: Number() would also take "020", "+5", "4e1", "0x28" or "1e999".
+// "-" and blank text do not match either (Number("") would be 0).
+const PLAIN_NUMBER = /^-?(0|[1-9]\d*)(\.\d+)?$/;
+const LEADING_ZEROS = /^-?0\d/;
+
 function parseNumber(text) {
-  if (text.trim() === '') return null;
-  const value = Number(text);
-  return Number.isFinite(value) ? value : null;
+  const trimmed = text.trim();
+  if (!PLAIN_NUMBER.test(trimmed)) return null;
+  const value = Number(trimmed);
+  return Number.isFinite(value) ? value : null; // a very long digit string can still overflow to Infinity
 }
 
 function checkNumber(form, field, { integer }, errors) {
   const [min, max] = LIMITS[field];
-  const value = parseNumber(form[field]);
+  const text = form[field].trim();
+  const withoutZeros = text.replace(/^(-?)0+(?=\d)/, '$1');
+  if (LEADING_ZEROS.test(text) && PLAIN_NUMBER.test(withoutZeros)) {
+    errors[field] = `${FIELD_NAMES[field]} must not start with a zero: write ${withoutZeros} instead of ${text}.`;
+    return null;
+  }
+  // Text that Number() reads as a number but that is not written plainly ("4e1", "+5", ".5"):
+  // a range message would read as wrong, because the value it stands for may be in range.
+  if (text !== '' && !PLAIN_NUMBER.test(text) && Number.isFinite(Number(text))) {
+    errors[field] = `${FIELD_NAMES[field]} must be written as a plain ${integer ? 'whole number, like 40' : 'number, like 1500.5'}.`;
+    return null;
+  }
+  const value = parseNumber(text);
   const kind = integer ? 'a whole number' : 'a number';
   const range = `from ${min.toLocaleString('en-US')} to ${max.toLocaleString('en-US')}`;
   if (value === null || (integer && !Number.isInteger(value)) || value < min || value > max) {
