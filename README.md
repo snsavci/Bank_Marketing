@@ -7,6 +7,16 @@ This project is an end-to-end machine learning application designed to predict t
 
 ---
 
+## 🖼️ Screenshots
+
+The form for one customer and the prediction it returns, on a desktop and a phone screen. The sample customer is made up.
+
+![The prediction form and the result panel on a desktop screen: a probability ring, a "Yes" badge, the decision threshold and the average customer](docs/screenshots/prediction-desktop.png)
+
+<img src="docs/screenshots/prediction-mobile.png" width="320" alt="The same form on a phone screen, with the result panel below the form">
+
+---
+
 ## 📊 Data, Model and Results
 
 **Data.** `data/train.csv` is the UCI [Bank Marketing](https://archive.ics.uci.edu/dataset/222/bank+marketing) dataset (Moro, Cortez and Rita, 2014; licensed CC BY 4.0 on the UCI page): 45,211 phone calls of a Portuguese bank, 11.7% of which ended with a term deposit subscription.
@@ -61,6 +71,8 @@ Bank_Marketing/
 │   │   ├── resultView.test.js   # Tests for the ring maths and result wording
 │   │   └── styles.css           # Navy and gold theme
 │   └── package.json         # Node.js dependencies
+├── docs/
+│   └── screenshots/         # Screenshots used in this README
 ├── data/                    # Training dataset
 │   └── train.csv
 └── notebook/                # EDA and Modeling
