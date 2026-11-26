@@ -1,129 +1,261 @@
+/* Everything is sized in rem, and the root size grows with the window (16px up to 1280px wide,
+   20px from about 2000px wide), so the whole layout scales with the screen. */
 :root {
   --navy: #0a1a33;
+  --navy-2: #14305c;
   --gold: #cfaf70;
-  --success: #2ecc71;
-  --danger: #e74c3c;
+  --gold-text: #8a6d2f;
+  --muted: #51607a;
+  --placeholder: #6b7280;
+  --page: #eef1f6;
+  --input-bg: #f8fafc;
+  --input-border: #d6dde8;
+  --track: #e6ebf3;
+  --success: #166534;
+  --success-bg: #dcfce7;
+  --danger: #b42318;
+  --danger-strong: #991b1b;
+  --danger-bg: #fee2e2;
   --text: #1e293b;
+  --shadow: 0 0.4rem 1.25rem rgba(10, 26, 51, 0.12);
+  --gutter: clamp(1rem, 4vw, 3rem);
 }
 
 * { box-sizing: border-box; }
 
+html { font-size: clamp(1rem, 0.55vw + 0.5625rem, 1.25rem); }
+
 body {
   margin: 0;
-  background: var(--navy);
-  color: var(--navy);
+  background: var(--page);
+  color: var(--text);
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
-.page {
-  display: flex;
-  justify-content: center;
-  min-height: 100vh;
-  padding: 40px 20px;
-}
-
-.card {
-  width: 100%;
-  max-width: 600px;
-  align-self: flex-start;
-  padding: 30px;
-  background: #fff;
-  border-radius: 15px;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-}
-
-.card-header {
-  margin-bottom: 30px;
-  padding-bottom: 25px;
-  border-bottom: 1px solid #d0d0d0;
+/* Header band */
+.hero {
+  padding: clamp(1.5rem, 3vw, 2.5rem) var(--gutter) clamp(3rem, 4vw, 4rem);
+  background: linear-gradient(135deg, var(--navy), var(--navy-2));
   text-align: center;
 }
 
-.card-header h1 {
+.hero h1 {
   margin: 0;
-  font-size: 24px;
-  letter-spacing: 0.5px;
+  color: #fff;
+  font-size: clamp(1.5rem, 1.15rem + 1.1vw, 2.25rem);
+  letter-spacing: 0.02em;
+}
+
+.hero p {
+  margin: 0.4rem 0 0;
+  color: var(--gold);
+  font-size: 1rem;
+}
+
+/* Layout: form card and result panel */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
+  max-width: 78rem;
+  margin: -2.25rem auto 0;
+  padding: 0 var(--gutter) 2.5rem;
+}
+
+.card {
+  padding: clamp(1.25rem, 2.2vw, 2rem);
+  background: #fff;
+  border-radius: 0.875rem;
+  box-shadow: var(--shadow);
+}
+
+@media (min-width: 860px) {
+  .layout {
+    grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+/* The form lays its fields out by its own width, not the window's. */
+.card:has(.group) { container-type: inline-size; }
+
+.group {
+  min-width: 0;
+  margin: 0 0 1.4rem;
+  padding: 0;
+  border: 0;
+}
+
+.group legend {
+  padding: 0;
+  margin-bottom: 0.25rem;
+  color: var(--gold-text);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.card-header p {
-  margin: 5px 0 0;
-  font-size: 18px;
-  color: var(--gold);
+.grid2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: 1rem;
 }
 
-.field { margin-top: 24px; }
+@container (min-width: 28rem) {
+  .grid2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+
+.field {
+  min-width: 0;
+  margin-top: 0.9rem;
+}
 
 .field label {
   display: flex;
   align-items: center;
-  margin-bottom: 5px;
-  font-size: 15px;
+  margin-bottom: 0.3rem;
+  color: var(--navy);
+  font-size: 0.875rem;
   font-weight: 600;
 }
 
-.icon { margin-right: 8px; color: var(--gold); }
+.icon { margin-right: 0.5rem; color: var(--gold-text); flex-shrink: 0; }
 
 input, select {
   width: 100%;
-  height: 48px;
-  padding: 0 14px;
-  border: 1.5px solid var(--gold);
-  border-radius: 10px;
-  background: #fff;
+  height: 2.5rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--input-border);
+  border-radius: 0.5rem;
+  background: var(--input-bg);
   color: var(--text);
   font: inherit;
-  font-size: 16px;
+  font-size: 0.95rem;
 }
 
-input::placeholder { color: #9ca3af; }
+input::placeholder { color: var(--placeholder); }
 
-input:focus-visible, select:focus-visible, .submit:focus-visible {
+input:focus-visible, select:focus-visible {
   outline: 3px solid var(--navy);
-  outline-offset: 2px;
+  outline-offset: 1px;
 }
 
 .field-error, .banner-error {
-  margin: 6px 0 0;
+  margin: 0.4rem 0 0;
   color: var(--danger);
-  font-size: 14px;
+  font-size: 0.875rem;
   white-space: pre-line;
 }
 
 .banner-error {
-  margin-top: 20px;
-  padding: 12px 14px;
+  margin-top: 1.1rem;
+  padding: 0.75rem 0.9rem;
   border-left: 4px solid var(--danger);
-  background: #fdf0ee;
+  background: var(--danger-bg);
 }
 
 .submit {
   display: block;
   width: 100%;
-  margin-top: 40px;
-  padding: 14px;
+  margin-top: 0.5rem;
+  padding: 0.75rem;
   border: 0;
-  border-radius: 10px;
-  background: var(--gold);
-  color: var(--navy);
+  border-radius: 0.625rem;
+  background: var(--navy);
+  color: #fff;
   font: inherit;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.02em;
   cursor: pointer;
+}
+
+/* The ring is drawn outside the button, on the white card, so it must be dark (gold would be 2:1 there). */
+.submit:focus-visible {
+  outline: 3px solid var(--navy);
+  outline-offset: 2px;
 }
 
 .submit:disabled { opacity: 0.6; cursor: progress; }
 
-.result {
-  margin-top: 32px;
-  padding: 22px;
-  border-left: 4px solid var(--gold);
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+/* Result panel */
+.panel { text-align: center; }
+
+.panel h2 {
+  margin: 0 0 0.9rem;
+  color: var(--gold-text);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.result h2 { margin: 0 0 10px; font-size: 18px; text-transform: uppercase; }
-.result p { margin: 5px 0 0; font-size: 18px; }
-.result strong.yes { color: var(--success); }
-.result strong.no { color: var(--danger); }
+.panel-empty {
+  padding: 1.4rem 1rem;
+  border: 2px dashed var(--input-border);
+  border-radius: 0.75rem;
+}
+
+.panel-empty p {
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.panel-empty .ring { opacity: 0.5; }
+
+.ring {
+  display: block;
+  width: min(100%, 11rem);
+  height: auto;
+  aspect-ratio: 1;
+  margin: 0 auto;
+}
+
+.ring-track { stroke: var(--track); }
+.ring-progress {
+  stroke: var(--navy);
+  animation: ring-fill 0.9s ease-out;
+}
+.ring.yes .ring-progress { stroke: var(--success); }
+.ring.no .ring-progress { stroke: var(--danger-strong); }
+/* Dark gold with a white halo: readable on the light track, on white and on the green or red arc. */
+.ring-tick-halo { stroke: #fff; stroke-width: 6; stroke-linecap: round; }
+.ring-tick { stroke: var(--gold-text); stroke-width: 3; stroke-linecap: round; }
+.ring-value { fill: var(--navy); font-size: 22px; font-weight: 700; }
+.ring-caption { fill: var(--muted); font-size: 8px; }
+
+/* No "to" keyframe: the ring grows to the dash length set on the element. */
+@keyframes ring-fill {
+  from { stroke-dasharray: 0 400; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring-progress { animation: none; }
+}
+
+.badge {
+  display: inline-block;
+  margin: 0.9rem 0 0;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.badge.yes { background: var(--success-bg); color: var(--success); }
+.badge.no { background: var(--danger-bg); color: var(--danger-strong); }
+
+.rows { margin: 1.1rem 0 0; }
+
+.rows div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0;
+  border-top: 1px solid var(--track);
+  font-size: 0.875rem;
+}
+
+.rows dt { color: var(--muted); }
+.rows dd { margin: 0; font-weight: 700; color: var(--navy); }

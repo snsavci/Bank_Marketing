@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   FaBriefcase, FaCoins, FaHeart, FaHistory, FaHome, FaPhoneAlt, FaUserTie,
 } from 'react-icons/fa';
+import ResultPanel from './ResultPanel.jsx';
 import {
   EARLIER, HOUSING, JOBS, LIMITS, MARITAL, apiBaseUrl, buildRequest, formatApiError, initialForm,
 } from './predictionForm.js';
+import { parseThreshold } from './resultView.js';
 
 const API_URL = apiBaseUrl(import.meta.env.VITE_API_URL);
 
@@ -43,6 +45,25 @@ export default function PredictionScreen() {
   const [apiError, setApiError] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [threshold, setThreshold] = useState(null);
+
+  // The decision threshold is shown next to the result. It is optional: any failure leaves it null,
+  // and the next successful prediction asks again (the API may have been started after the page).
+  async function loadThreshold(isCurrent = () => true) {
+    try {
+      const response = await fetch(`${API_URL}/health`);
+      const value = parseThreshold(await response.text());
+      if (value !== null && isCurrent()) setThreshold(value);
+    } catch {
+      // no threshold, the prediction still works
+    }
+  }
+
+  useEffect(() => {
+    let current = true; // ignores a stale answer after unmount (StrictMode runs this effect twice)
+    loadThreshold(() => current);
+    return () => { current = false; };
+  }, []);
 
   const update = (name) => (event) => {
     setForm((current) => ({ ...current, [name]: event.target.value }));
@@ -91,87 +112,90 @@ export default function PredictionScreen() {
         throw new Error('missing fields');
       }
       setResult(body);
+      if (threshold === null) loadThreshold();
     } catch {
       setApiError(`The server at ${API_URL} answered, but not with a prediction. Is this the right API address?`);
     }
   };
 
   const showEarlierDetails = form.earlier !== 'none';
-  const subscribes = result?.subscription_predicted === 'Yes';
 
   return (
-    <main className="page">
-      <form className="card" onSubmit={handleSubmit} noValidate>
-        <header className="card-header">
-          <h1>Customer Subscription Prediction</h1>
-          <p>Term Deposit Offer Analysis</p>
-        </header>
+    <>
+      <header className="hero">
+        <h1>Customer Subscription Prediction</h1>
+        <p>Term deposit offer analysis</p>
+      </header>
 
-        <FieldRow id="age" icon={FaUserTie} label="Age" error={errors.age}>
-          <input id="age" type="number" step="1" placeholder="ex: 40"
-            min={LIMITS.age[0]} max={LIMITS.age[1]} value={form.age} onChange={update('age')} />
-        </FieldRow>
+      <main className="layout">
+        <form className="card" onSubmit={handleSubmit} noValidate>
+          <fieldset className="group">
+            <legend>Customer profile</legend>
+            <div className="grid2">
+              <FieldRow id="age" icon={FaUserTie} label="Age" error={errors.age}>
+                <input id="age" type="number" step="1" placeholder="ex: 40"
+                  min={LIMITS.age[0]} max={LIMITS.age[1]} value={form.age} onChange={update('age')} />
+              </FieldRow>
 
-        <FieldRow id="balance" icon={FaCoins} label="Balance (€)" error={errors.balance}>
-          <input id="balance" type="number" step="any" placeholder="ex: 1000"
-            value={form.balance} onChange={update('balance')} />
-        </FieldRow>
+              <FieldRow id="balance" icon={FaCoins} label="Balance (€)" error={errors.balance}>
+                <input id="balance" type="number" step="any" placeholder="ex: 1000"
+                  value={form.balance} onChange={update('balance')} />
+              </FieldRow>
 
-        <FieldRow id="job" icon={FaBriefcase} label="Job" error={errors.job}>
-          <SelectInput id="job" value={form.job} onChange={update('job')} placeholder="Select job"
-            options={JOBS} labelOf={(job) => capitalize(job.replace('.', ''))} />
-        </FieldRow>
+              <FieldRow id="job" icon={FaBriefcase} label="Job" error={errors.job}>
+                <SelectInput id="job" value={form.job} onChange={update('job')} placeholder="Select job"
+                  options={JOBS} labelOf={(job) => capitalize(job.replace('.', ''))} />
+              </FieldRow>
 
-        <FieldRow id="marital" icon={FaHeart} label="Marital status" error={errors.marital}>
-          <SelectInput id="marital" value={form.marital} onChange={update('marital')}
-            placeholder="Select marital status" options={MARITAL} labelOf={capitalize} />
-        </FieldRow>
+              <FieldRow id="marital" icon={FaHeart} label="Marital status" error={errors.marital}>
+                <SelectInput id="marital" value={form.marital} onChange={update('marital')}
+                  placeholder="Select marital status" options={MARITAL} labelOf={capitalize} />
+              </FieldRow>
 
-        <FieldRow id="housing" icon={FaHome} label="Housing loan" error={errors.housing}>
-          <SelectInput id="housing" value={form.housing} onChange={update('housing')}
-            placeholder="Select housing loan" options={HOUSING} labelOf={capitalize} />
-        </FieldRow>
+              <FieldRow id="housing" icon={FaHome} label="Housing loan" error={errors.housing}>
+                <SelectInput id="housing" value={form.housing} onChange={update('housing')}
+                  placeholder="Select housing loan" options={HOUSING} labelOf={capitalize} />
+              </FieldRow>
 
-        <FieldRow id="campaign" icon={FaPhoneAlt} label="Contacts in this campaign" error={errors.campaign}>
-          <input id="campaign" type="number" step="1"
-            min={LIMITS.campaign[0]} max={LIMITS.campaign[1]} value={form.campaign} onChange={update('campaign')} />
-        </FieldRow>
+              <FieldRow id="campaign" icon={FaPhoneAlt} label="Contacts in this campaign" error={errors.campaign}>
+                <input id="campaign" type="number" step="1"
+                  min={LIMITS.campaign[0]} max={LIMITS.campaign[1]} value={form.campaign}
+                  onChange={update('campaign')} />
+              </FieldRow>
+            </div>
+          </fieldset>
 
-        <FieldRow id="earlier" icon={FaHistory} label="Previous campaign" error={errors.earlier}>
-          <SelectInput id="earlier" value={form.earlier} onChange={update('earlier')}
-            options={EARLIER} labelOf={(option) => EARLIER_LABELS[option]} />
-        </FieldRow>
-
-        {showEarlierDetails && (
-          <>
-            <FieldRow id="previous" icon={FaPhoneAlt} label="Number of earlier contacts" error={errors.previous}>
-              <input id="previous" type="number" step="1" placeholder="ex: 2"
-                min={LIMITS.previous[0]} max={LIMITS.previous[1]} value={form.previous} onChange={update('previous')} />
+          <fieldset className="group">
+            <legend>Previous campaign</legend>
+            <FieldRow id="earlier" icon={FaHistory} label="Outcome" error={errors.earlier}>
+              <SelectInput id="earlier" value={form.earlier} onChange={update('earlier')}
+                options={EARLIER} labelOf={(option) => EARLIER_LABELS[option]} />
             </FieldRow>
-            <FieldRow id="pdays" icon={FaHistory} label="Days since the last contact" error={errors.pdays}>
-              <input id="pdays" type="number" step="1" placeholder="ex: 90"
-                min={LIMITS.pdays[0]} max={LIMITS.pdays[1]} value={form.pdays} onChange={update('pdays')} />
-            </FieldRow>
-          </>
-        )}
 
-        <button type="submit" className="submit" disabled={loading}>
-          {loading ? 'Predicting...' : 'PREDICT SUBSCRIPTION'}
-        </button>
+            {showEarlierDetails && (
+              <div className="grid2">
+                <FieldRow id="previous" icon={FaPhoneAlt} label="Number of earlier contacts" error={errors.previous}>
+                  <input id="previous" type="number" step="1" placeholder="ex: 2"
+                    min={LIMITS.previous[0]} max={LIMITS.previous[1]} value={form.previous}
+                    onChange={update('previous')} />
+                </FieldRow>
+                <FieldRow id="pdays" icon={FaHistory} label="Days since the last contact" error={errors.pdays}>
+                  <input id="pdays" type="number" step="1" placeholder="ex: 90"
+                    min={LIMITS.pdays[0]} max={LIMITS.pdays[1]} value={form.pdays} onChange={update('pdays')} />
+                </FieldRow>
+              </div>
+            )}
+          </fieldset>
 
-        {apiError && <p className="banner-error" role="alert">{apiError}</p>}
+          <button type="submit" className="submit" disabled={loading}>
+            {loading ? 'Predicting...' : 'Predict subscription'}
+          </button>
 
-        {result && (
-          <section className="result" aria-live="polite">
-            <h2>Prediction analysis</h2>
-            <p>
-              Subscription status:{' '}
-              <strong className={subscribes ? 'yes' : 'no'}>{result.subscription_predicted}</strong>
-            </p>
-            <p>Probability: {(result.probability_of_yes * 100).toFixed(2)}%</p>
-          </section>
-        )}
-      </form>
-    </main>
+          {apiError && <p className="banner-error" role="alert">{apiError}</p>}
+        </form>
+
+        <ResultPanel loading={loading} result={result} threshold={threshold} />
+      </main>
+    </>
   );
 }

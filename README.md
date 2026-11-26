@@ -54,8 +54,11 @@ Bank_Marketing/
 │   ├── src/
 │   │   ├── main.jsx             # Entry point
 │   │   ├── PredictionScreen.jsx # Main Prediction Screen
+│   │   ├── ResultPanel.jsx      # Prediction result: ring, badge, comparison
 │   │   ├── predictionForm.js    # Form validation and request building
 │   │   ├── predictionForm.test.js  # Tests for the form logic
+│   │   ├── resultView.js        # Ring maths and result wording
+│   │   ├── resultView.test.js   # Tests for the ring maths and result wording
 │   │   └── styles.css           # Navy and gold theme
 │   └── package.json         # Node.js dependencies
 ├── data/                    # Training dataset
