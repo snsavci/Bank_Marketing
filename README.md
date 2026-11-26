@@ -56,7 +56,9 @@ Bank_Marketing/
 │   │   └── bank_marketing_rf_model.pkl  # Trained Random Forest model
 │   ├── config/
 │   │   └── optimal_threshold.json       # Optimized prediction threshold
-│   └── requirements.txt     # Python dependencies
+│   ├── tests/               # API tests (pytest)
+│   ├── requirements.txt     # Python dependencies (pinned)
+│   └── requirements-dev.txt # Adds the test and notebook tools
 ├── frontend-app/            # React (Vite) Frontend
 │   ├── index.html           # Page shell
 │   ├── vite.config.js       # Dev server port (5173)
@@ -112,6 +114,15 @@ The API will be running at [http://localhost:8000](http://localhost:8000)
 API Documentation (Swagger UI): [http://localhost:8000/docs](http://localhost:8000/docs)  
 Health Check: [http://localhost:8000/health](http://localhost:8000/health)
 
+Run the API tests (in the same environment, from `backend-api`):
+
+```
+pip install -r requirements-dev.txt
+pytest
+```
+
+`requirements-dev.txt` includes `requirements.txt`, so the pinned versions stay the same. It only adds pytest, httpx2 (used by the test client) and the tools for the notebook.
+
 ---
 
 ### 2. Frontend Setup
@@ -151,7 +162,7 @@ The API accepts requests from `http://localhost:5173` and `http://127.0.0.1:5173
 
 If you want to retrain the model from scratch:
 
-1. Open `notebook/eda-and-modeling.ipynb` in Jupyter, in the same environment as the API (the versions in `backend-api/requirements.txt` must match, otherwise the saved model cannot be loaded)
+1. Install `backend-api/requirements-dev.txt` (it adds Jupyter and matplotlib) and open `notebook/eda-and-modeling.ipynb` in Jupyter, in the same environment as the API (the versions in `backend-api/requirements.txt` must match, otherwise the saved model cannot be loaded)
 2. Run all cells top to bottom
 3. The notebook saves the model to `backend-api/models/` and the threshold to `backend-api/config/`
 
