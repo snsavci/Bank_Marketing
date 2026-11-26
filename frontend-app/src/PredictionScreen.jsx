@@ -3,8 +3,9 @@ import {
   FaBriefcase, FaCoins, FaHeart, FaHistory, FaHome, FaPhoneAlt, FaUserTie,
 } from 'react-icons/fa';
 import ResultPanel from './ResultPanel.jsx';
+import { predict } from './predictApi.js';
 import {
-  EARLIER, HOUSING, JOBS, LIMITS, MARITAL, apiBaseUrl, buildRequest, formatApiError, initialForm,
+  EARLIER, HOUSING, JOBS, LIMITS, MARITAL, apiBaseUrl, buildRequest, initialForm,
 } from './predictionForm.js';
 import { parseThreshold } from './resultView.js';
 
@@ -83,39 +84,19 @@ export default function PredictionScreen() {
     if (!built.ok) return;
 
     setLoading(true);
-    let response;
-    let text;
+    let answer;
     try {
-      response = await fetch(`${API_URL}/predict`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(built.payload),
-      });
-      text = await response.text();
-    } catch {
-      setApiError(
-        `Could not reach the API at ${API_URL}. Check that it is running `
-        + '(uvicorn api:app --port 8000) and that this page is served from http://localhost:5173.',
-      );
+      answer = await predict(API_URL, built.payload);
+    } finally {
       setLoading(false);
-      return;
     }
-    setLoading(false);
 
-    if (!response.ok) {
-      setApiError(formatApiError(response.status, text));
+    if (!answer.ok) {
+      setApiError(answer.message);
       return;
     }
-    try {
-      const body = JSON.parse(text);
-      if (typeof body.subscription_predicted !== 'string' || !Number.isFinite(body.probability_of_yes)) {
-        throw new Error('missing fields');
-      }
-      setResult(body);
-      if (threshold === null) loadThreshold();
-    } catch {
-      setApiError(`The server at ${API_URL} answered, but not with a prediction. Is this the right API address?`);
-    }
+    setResult(answer.body);
+    if (threshold === null) loadThreshold();
   };
 
   const showEarlierDetails = form.earlier !== 'none';
